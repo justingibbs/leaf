@@ -1,6 +1,7 @@
 """App-level configuration management.
 
 Manages ~/.leaf/config.json for app-wide settings.
+Also loads environment variables from .env files.
 """
 
 import json
@@ -9,6 +10,14 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+# Load .env file if it exists
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
 
 
 def get_config_dir() -> Path:
@@ -19,6 +28,45 @@ def get_config_dir() -> Path:
     else:
         path = Path.home() / ".leaf"
     return path
+
+
+def get_ai_api_key() -> str | None:
+    """Get the AI API key from environment or config.
+
+    Checks in order:
+    1. PYDANTIC_AI_API_KEY environment variable
+    2. App config file
+    """
+    # Check environment first
+    api_key = os.environ.get("PYDANTIC_AI_API_KEY")
+    if api_key:
+        return api_key
+
+    # Fall back to config file
+    try:
+        config = get_app_config()
+        return config.api_keys.pydantic_ai_gateway
+    except Exception:
+        return None
+
+
+def get_default_model() -> str:
+    """Get the default AI model from environment or config.
+
+    Checks in order:
+    1. LEAF_MODEL environment variable
+    2. App config file
+    3. Default value
+    """
+    model = os.environ.get("LEAF_MODEL")
+    if model:
+        return model
+
+    try:
+        config = get_app_config()
+        return config.default_model
+    except Exception:
+        return "google-gla:gemini-2.0-flash"
 
 
 class ApiKeys(BaseModel):
@@ -32,7 +80,7 @@ class AppConfig(BaseModel):
 
     version: str = "1.0"
     theme: Literal["light", "dark", "system"] = "system"
-    default_model: str = "gateway/google:gemini-2.5-flash"
+    default_model: str = "google-gla:gemini-2.0-flash"
     api_keys: ApiKeys = Field(default_factory=ApiKeys)
     telemetry: bool = False
 

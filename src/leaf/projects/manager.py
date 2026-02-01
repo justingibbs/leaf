@@ -9,6 +9,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from leaf.db.session import init_database
 from leaf.projects.registry import ProjectInfo, ProjectRegistry
 
 
@@ -57,6 +58,9 @@ class ProjectManager:
         config_file = leaf_dir / "config.json"
         with open(config_file, "w") as f:
             json.dump(config.model_dump(mode="json"), f, indent=2, default=str)
+
+        # Initialize the database
+        init_database(leaf_dir / "leaf.db")
 
     def _is_initialized(self, project_path: Path) -> bool:
         """Check if a folder has been initialized as a LEAF project."""
@@ -158,6 +162,8 @@ class ProjectManager:
         existing = self.registry.get_project_by_path(project_path)
         if existing:
             self.registry.touch_project(existing.id)
+            # Ensure database is initialized (in case project was moved)
+            init_database(self._get_leaf_dir(project_path) / "leaf.db")
             return existing
 
         # Load config and register
@@ -173,6 +179,9 @@ class ProjectManager:
         )
 
         self.registry.add_project(project)
+
+        # Ensure database is initialized
+        init_database(self._get_leaf_dir(project_path) / "leaf.db")
 
         return project
 

@@ -1,9 +1,12 @@
 """Current project context management.
 
 Provides global access to the currently active project.
+
+Note: This uses a simple module-level variable instead of ContextVar
+because LEAF is a single-user desktop app and we need the project
+context to persist across HTTP requests.
 """
 
-from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -57,23 +60,34 @@ class ProjectContext:
         return self.leaf_dir / "outputs"
 
 
-# Global context variable for the current project
-_current_project: ContextVar[ProjectContext | None] = ContextVar(
-    "current_project", default=None
-)
+class _ProjectContextHolder:
+    """Holds the current project context."""
+
+    def __init__(self) -> None:
+        self._context: ProjectContext | None = None
+
+    def get(self) -> ProjectContext | None:
+        return self._context
+
+    def set(self, project: ProjectInfo | None) -> None:
+        if project is None:
+            self._context = None
+        else:
+            self._context = ProjectContext(project=project)
+
+
+# Global context holder
+_holder = _ProjectContextHolder()
 
 
 def get_current_project() -> ProjectContext | None:
     """Get the current project context."""
-    return _current_project.get()
+    return _holder.get()
 
 
 def set_current_project(project: ProjectInfo | None) -> None:
     """Set the current project context."""
-    if project is None:
-        _current_project.set(None)
-    else:
-        _current_project.set(ProjectContext(project=project))
+    _holder.set(project)
 
 
 def require_current_project() -> ProjectContext:
