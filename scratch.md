@@ -8,4 +8,4 @@ Implement Phase 1 (Foundation):
 - Workspace selection and initialization
 - Basic project structure
 
-Start with the Python backend. We'll add Tauri and the React frontend after the backend is working.
+Start with the Python backend. We'll add Tauri and the React frontend after the backend is working. Ask me any questions you have before starting.
