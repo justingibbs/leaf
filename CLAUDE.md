@@ -4,175 +4,205 @@
 
 LEAF (Local Event-Driven Automation Framework) is a desktop app that lets users create automations through natural language. Think "Claude Cowork meets HyperCard" — users describe what they want, an LLM generates Python code, and that code runs automatically when files are added to watched folders.
 
-## Architecture
+## Current Status
 
-LEAF uses a two-level structure:
+**Backend Complete (Phases 1-6)** — Ready for frontend development.
 
-- **App Level** (`~/.leaf/`): Installed once, manages multiple projects
-- **Project Level** (`.leaf/` in each project folder): Self-contained with own database, cards, queue
+| Phase | Status | Description |
+|-------|--------|-------------|
+| 1 | ✅ Complete | Core infrastructure (FastAPI, config, projects) |
+| 2 | ✅ Complete | File watcher with watchfiles |
+| 3 | ✅ Complete | Cards & Triggers |
+| 4 | ✅ Complete | PydanticAI Agent with streaming chat |
+| 5 | ✅ Complete | Execution Engine (UV sandbox, retries) |
+| 6 | ✅ Complete | MCP Integration |
+| 7 | 🔲 Pending | Tauri + React Frontend |
 
-Projects are portable — zip and move to another machine.
+## Documentation
 
-## Core Workflow
-
-1. User opens LEAF → selects or creates a **Project** (a folder)
-2. User: "Analyze CSV files dropped in inbox/ and generate reports"
-3. LEAF agent generates a Python program and creates a Card
-4. When a CSV appears in inbox/, the Card triggers
-5. Python runs via `uv run`, output appears in Event Queue
+| Document | Description |
+|----------|-------------|
+| [README.md](README.md) | Project overview and quick start |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, components, data flow |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Dev setup, testing, contributing |
+| [docs/API.md](docs/API.md) | Complete REST API reference |
+| [docs/CARDS.md](docs/CARDS.md) | Cards guide, triggers, programs |
+| [docs/MCP.md](docs/MCP.md) | MCP integration guide |
+| [context/LEAF_SPEC.md](context/LEAF_SPEC.md) | Original specification |
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Desktop Shell | Tauri 2.x |
+| Desktop Shell | Tauri 2.x (Phase 7) |
 | Backend | FastAPI (Python) |
 | Package Manager | UV |
 | AI Framework | PydanticAI |
-| Model Access | Pydantic AI Gateway |
-| Workflow Engine | Temporal |
+| Model Access | Pydantic AI Gateway (free Gemini) |
 | Database | SQLite via SQLModel (per-project) |
 | File Watching | watchfiles |
-| Frontend | React + TypeScript |
+| Frontend | React + TypeScript (Phase 7) |
 
 ## Project Structure
 
 ```
 leaf/
-├── context/
-│   ├── LEAF_SPEC.md          # Full specification (v2.2)
-│   └── CONCEPTS.md           # Concepts & Synchronizations model
-├── tauri/                     # Tauri shell (Rust)
-├── frontend/                  # React frontend
 ├── src/leaf/                  # Python backend
-│   ├── api/
-│   │   ├── app_routes.py     # App-level routes (/api/app, /api/projects)
-│   │   ├── project_routes.py # Project-level routes (/api/cards, etc.)
-│   │   └── websocket.py      # WebSocket handler
-│   ├── core/                  # Config, event bus
-│   ├── projects/              # Project manager, registry, context
-│   ├── watcher/               # File watcher
-│   ├── cards/                 # Card models + registry
-│   ├── execution/             # Sandbox + Temporal workflows
-│   ├── agent/                 # PydanticAI agent + prompts
-│   ├── mcp/                   # MCP server management
-│   └── db/                    # SQLModel schemas (per-project)
-├── tests/
+│   ├── main.py               # FastAPI entry point
+│   ├── api/                  # REST & WebSocket routes
+│   │   ├── app_routes.py     # App config
+│   │   ├── project_routes.py # Projects, cards, chat
+│   │   ├── execution_routes.py # Executions
+│   │   ├── mcp_routes.py     # MCP servers
+│   │   └── websocket.py      # WebSocket handlers
+│   ├── agent/                # PydanticAI agent
+│   │   ├── leaf_agent.py     # Agent + tools
+│   │   ├── prompts.py        # System prompts
+│   │   └── tools.py          # File operations
+│   ├── cards/                # Card management
+│   │   ├── registry.py       # CRUD operations
+│   │   ├── models.py         # Pydantic models
+│   │   └── matcher.py        # Event matching
+│   ├── core/                 # Core infrastructure
+│   │   ├── config.py         # Configuration
+│   │   └── events.py         # Event bus
+│   ├── db/                   # Database layer
+│   │   ├── models.py         # SQLModel tables
+│   │   └── session.py        # Session management
+│   ├── execution/            # Execution engine
+│   │   ├── sandbox.py        # UV sandbox
+│   │   └── runner.py         # Orchestration + retries
+│   ├── mcp/                  # MCP integration
+│   │   ├── client.py         # MCP client
+│   │   ├── config.py         # Server configuration
+│   │   ├── registry.py       # Connection registry
+│   │   └── card_helper.py    # Helper for cards
+│   ├── projects/             # Project management
+│   │   ├── manager.py        # Project CRUD
+│   │   └── context.py        # Current project
+│   └── watcher/              # File watching
+│       └── file_watcher.py   # watchfiles integration
+├── tests/                    # Test suite (112 tests)
+├── docs/                     # Documentation
+├── context/                  # Specs and concepts
 ├── pyproject.toml
-└── uv.lock
-```
-
-## App vs Project Config
-
-```
-~/.leaf/                      # App-level (one per machine)
-├── config.json               # Theme, default model, API keys
-└── projects.json             # Registry of known projects
-
-~/Documents/MyProject/        # Project folder (user's folder)
-└── .leaf/                    # Project data
-    ├── config.json           # Project settings
-    ├── leaf.db               # SQLite (cards, events, executions)
-    ├── programs/             # Generated Python programs
-    ├── logs/                 # Execution logs
-    └── outputs/              # Generated files
+└── .env.example
 ```
 
 ## Key Commands
 
 ```bash
 # Setup
-uv sync                                    # Install Python deps
-cd frontend && npm install                 # Install frontend deps
+uv sync                       # Install dependencies
+cp .env.example .env          # Configure environment
 
 # Development
-temporal server start-dev                  # Start Temporal (terminal 1)
-uv run uvicorn leaf.main:app --reload     # Start backend (terminal 2)
-cd tauri && cargo tauri dev               # Start Tauri (terminal 3)
+uv run python -m leaf.main    # Start backend (port 8000)
 
 # Testing
-uv run pytest                             # Run tests
-uv run ruff check .                       # Lint
-
-# Dependencies
-uv add <package>                          # Add dependency
-uv add --group dev <package>              # Add dev dependency
+uv run pytest                 # Run all tests (112 tests)
+uv run pytest -v              # Verbose output
+uv run ruff check .           # Lint
 ```
-
-## Key Concepts
-
-LEAF is built using the **Concepts & Synchronizations** model — independent modules connected through explicit sync rules. See `context/CONCEPTS.md` for the full conceptual model with 12 concepts and their synchronizations.
-
-### Projects
-A Project is a self-contained automation environment tied to a folder. Each project has its own database, cards, event queue, and file watchers. Projects are portable — zip and move.
-
-### Cards
-A Card is an automation: trigger + generated Python code + execution settings. Cards are stored in the project's SQLite database, programs in `.leaf/programs/`.
-
-### Event Queue
-All events (file changes, card executions, agent responses) flow through a central queue visible in the UI. WebSocket streams events to the frontend in real-time. Each project has its own queue.
-
-### Interaction Primitives
-The LLM can only use a fixed set of inputs/outputs (confirmation, choice, text_input, etc.) — no freeform UI generation. This keeps behavior predictable.
-
-### Sandboxed Execution
-Generated programs run via `uv run` in isolated environments. Each card has its own `pyproject.toml` and `uv.lock`. Programs can only write to the project folder.
 
 ## Environment Variables
 
 ```bash
-PYDANTIC_AI_GATEWAY_API_KEY=xxx   # Required: AI Gateway key
-LEAF_PORT=8000                     # Optional: API port
-LEAF_MODEL=gateway/google:gemini-2.5-flash  # Optional: default model
-LEAF_CONFIG_DIR=~/.leaf            # Optional: override app config location
+PYDANTIC_AI_API_KEY=xxx       # Required: Pydantic AI Gateway key
+LEAF_MODEL=google-gla:gemini-2.0-flash  # Optional: AI model
+LEAF_PORT=8000                # Optional: API port
+LEAF_CONFIG_DIR=~/.config/leaf # Optional: config location
 ```
 
-## API Routes
+## API Overview
 
-### App-Level
-- `GET /api/app/config` - Get app configuration
-- `PUT /api/app/config` - Update app configuration
-- `GET /api/projects` - List all known projects
-- `POST /api/projects` - Create new project
-- `POST /api/projects/open` - Open existing folder as project
-- `DELETE /api/projects/{id}` - Remove from registry
+The backend runs at `http://127.0.0.1:8000`.
 
-### Project-Level (require active project)
-- `GET /api/project` - Get current project info
-- `GET /api/cards` - List cards
+### Projects
+- `POST /api/projects` - Create project
+- `GET /api/projects` - List projects
+- `POST /api/projects/switch` - Switch to project
+- `GET /api/projects/current` - Get current project
+
+### Cards
 - `POST /api/cards` - Create card
-- `GET /api/events` - List events
-- `POST /api/chat` - Send chat message
-- `WS /ws` - WebSocket for real-time events
+- `GET /api/cards` - List cards
+- `GET /api/cards/{id}` - Get card
+- `PATCH /api/cards/{id}` - Update card
+- `DELETE /api/cards/{id}` - Delete card
+- `POST /api/cards/{id}/trigger` - Manual trigger
 
-## Implementation Status
+### Chat
+- `POST /api/chat` - Send message to agent
+- `GET /api/chat/history` - Get chat history
+- `WS /ws/chat` - Streaming chat
 
-**Phase 1: Foundation** - In progress
-- FastAPI app skeleton with WebSocket support
-- App-level config management (~/.leaf/)
-- Project registry (projects.json CRUD)
-- Project initialization (create .leaf/ folder structure)
-- Per-project SQLite database setup with SQLModel
-- Basic project switching
+### Executions
+- `GET /api/executions` - List executions
+- `GET /api/executions/{id}` - Get execution
+- `POST /api/executions/manual` - Execute card manually
 
-See `context/LEAF_SPEC.md` for full specification and `context/CONCEPTS.md` for the conceptual model.
+### MCP
+- `GET /api/mcp/servers` - List MCP servers
+- `POST /api/mcp/servers` - Add server
+- `POST /api/mcp/servers/{id}/connect` - Connect to server
+- `GET /api/mcp/tools` - List available tools
+- `POST /api/mcp/tools/call` - Call a tool
 
-## Important Files
+### WebSocket
+- `WS /ws` - Real-time events (file changes, executions)
+- `WS /ws/chat` - Streaming chat responses
 
-- `context/LEAF_SPEC.md` — Full specification (v2.2) with architecture, schemas, and implementation phases
-- `context/CONCEPTS.md` — Concepts & Synchronizations model (12 concepts, sync rules, example flows)
-- `src/leaf/main.py` — FastAPI app entry point
-- `src/leaf/projects/manager.py` — Project initialization and management
-- `src/leaf/projects/registry.py` — projects.json management
-- `src/leaf/agent/leaf_agent.py` — PydanticAI agent (will generate cards + code)
-- `src/leaf/execution/workflows.py` — Temporal workflows for card execution
-- `src/leaf/cards/models.py` — Card and Trigger Pydantic models
+See [docs/API.md](docs/API.md) for complete reference.
+
+## Core Concepts
+
+### Projects
+A folder with `.leaf/` containing database, card programs, and config. Each project is self-contained and portable.
+
+### Cards
+An automation unit: trigger + Python program + settings. Created via AI agent or API.
+
+**Trigger Types:**
+- `file_created` - File added to watched folder
+- `file_modified` - File changed
+- `manual` - API triggered
+- `schedule` - Cron-based (future)
+
+### Execution
+Cards run in isolated UV virtual environments with:
+- Configurable timeout (default: 5 min)
+- Automatic retries (default: 3)
+- stdout/stderr capture
+- Environment variables (`LEAF_PROJECT_ROOT`, `LEAF_CARD_ID`)
+
+### MCP Integration
+Connect to MCP servers for external tools. Built-in servers: filesystem, fetch, memory.
+
+## Phase 7: Frontend
+
+The frontend needs to implement:
+
+1. **Tauri** desktop wrapper
+2. **React + TypeScript** UI
+3. **Views:**
+   - Project selector/manager
+   - Cards dashboard
+   - Card detail/editor
+   - Chat interface (streaming)
+   - Execution history
+   - MCP server management
+   - Real-time event feed
+
+4. **WebSocket Integration:**
+   - `/ws` for live events
+   - `/ws/chat` for streaming responses
 
 ## Code Style
 
 - Python 3.11+
-- Use `uv` for all package management
-- Pydantic models for all data structures
-- Async everywhere (FastAPI, Temporal activities)
 - Type hints required
-- Ruff for linting (E, F, I, UP rules)
+- Async everywhere
+- Pydantic models for data
+- Ruff for linting
+- pytest for testing
