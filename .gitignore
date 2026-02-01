@@ -1,0 +1,178 @@
+# =============================================================================
+# LEAF .gitignore
+# =============================================================================
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# UV / Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.python-version
+
+# UV cache (global, but just in case)
+.uv/
+
+# Don't ignore uv.lock - it should be committed for reproducibility
+# !uv.lock
+
+# =============================================================================
+# React / Node.js
+# =============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/out/
+
+# Vite
+frontend/.vite/
+*.local
+
+# =============================================================================
+# Tauri / Rust
+# =============================================================================
+tauri/target/
+tauri/Cargo.lock
+
+# Rust
+*.rs.bk
+*.rlib
+
+# =============================================================================
+# SQLite / Database
+# =============================================================================
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# =============================================================================
+# LEAF Workspace Data (user data, not project files)
+# =============================================================================
+# The .leaf folder in user workspaces contains generated programs and data
+# This pattern is for if someone runs LEAF inside the project directory
+.leaf/
+
+# =============================================================================
+# IDE / Editor
+# =============================================================================
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains (PyCharm, WebStorm, RustRover)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.#*
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# =============================================================================
+# OS Files
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+
+# =============================================================================
+# Testing / Coverage
+# =============================================================================
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# =============================================================================
+# Logs
+# =============================================================================
+*.log
+logs/
+
+# =============================================================================
+# Environment / Secrets
+# =============================================================================
+.env
+.env.local
+.env.*.local
+.envrc
+*.pem
+*.key
+secrets/
+
+# =============================================================================
+# Temporal (if running locally with persistence)
+# =============================================================================
+temporal-data/
+
+# =============================================================================
+# Misc
+# =============================================================================
+*.bak
+*.tmp
+*.temp
+.cache/
