@@ -17,8 +17,8 @@ export async function getCurrentProject(): Promise<Project | null> {
   }
 }
 
-export async function switchProject(data: SwitchProjectRequest): Promise<{ status: string; project: Project }> {
-  return post('/api/projects/switch', data)
+export async function switchProject(data: SwitchProjectRequest): Promise<Project> {
+  return post<Project>('/api/projects/switch', data)
 }
 
 export async function closeProject(): Promise<{ status: string }> {

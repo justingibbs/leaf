@@ -41,9 +41,9 @@ export function useSwitchProject() {
 
   return useMutation({
     mutationFn: (data: SwitchProjectRequest) => projectsApi.switchProject(data),
-    onSuccess: (result) => {
+    onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.current })
-      setCurrentProject(result.project)
+      setCurrentProject(project)
     },
   })
 }

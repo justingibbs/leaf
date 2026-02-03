@@ -24,7 +24,8 @@ export function ProjectPicker() {
   }, [theme])
 
   const handleCreateProject = async (name: string, path: string) => {
-    await createProject.mutateAsync({ name, path })
+    const project = await createProject.mutateAsync({ name, path })
+    await switchProject.mutateAsync({ project_id: project.id })
     navigate('/project')
   }
 
@@ -52,7 +53,8 @@ export function ProjectPicker() {
         } else {
           // Create a new project entry for this path
           const folderName = selected.split('/').pop() || selected.split('\\').pop() || 'Project'
-          await createProject.mutateAsync({ name: folderName, path: selected })
+          const project = await createProject.mutateAsync({ name: folderName, path: selected })
+          await switchProject.mutateAsync({ project_id: project.id })
           navigate('/project')
         }
       }

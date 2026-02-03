@@ -36,17 +36,20 @@ export function useChatWebSocket(): UseChatWebSocketReturn {
       try {
         const data = JSON.parse(event.data) as WsChatMessage
 
-        if (data.type === 'chunk') {
+        if (data.type === 'chat.response.chunk') {
           setStreamingContent((prev) => prev + data.content)
-        } else if (data.type === 'done') {
+        } else if (data.type === 'chat.response.end') {
           setIsStreaming(false)
           // Invalidate chat history to refetch with complete messages
           queryClient.invalidateQueries({ queryKey: chatKeys.history })
           setStreamingContent('')
-        } else if (data.type === 'error') {
+        } else if (data.type === 'chat.error' || data.type === 'error') {
           setError(data.message)
           setIsStreaming(false)
           setStreamingContent('')
+        } else if (data.type === 'chat.connected') {
+          // Connection established
+          setIsConnected(true)
         }
       } catch (err) {
         console.error('Failed to parse chat message:', err)
@@ -95,7 +98,7 @@ export function useChatWebSocket(): UseChatWebSocketReturn {
     setError(null)
 
     wsRef.current.send(JSON.stringify({
-      type: 'message',
+      type: 'chat.message',
       content,
     }))
   }, [queryClient])

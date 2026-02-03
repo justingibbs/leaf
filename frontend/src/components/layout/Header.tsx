@@ -39,7 +39,7 @@ export function Header() {
             <PanelLeftClose className="h-5 w-5" />
           )}
         </Button>
-        <Link to="/project" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <div className="p-1.5 bg-primary/10 rounded-md">
             <Leaf className="h-4 w-4 text-primary" />
           </div>
