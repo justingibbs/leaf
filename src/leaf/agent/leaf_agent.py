@@ -41,12 +41,12 @@ def create_leaf_agent() -> Agent[AgentContext, str]:
     """
     model = get_default_model()
 
-    # Create agent with Pydantic AI Gateway model
+    # Create agent with model (e.g., gateway/google-vertex:gemini-2.0-flash for Pydantic AI Gateway)
     agent = Agent(
-        f"pydantic:{model}",
+        model,
         system_prompt=SYSTEM_PROMPT,
         deps_type=AgentContext,
-        result_type=str,
+        output_type=str,
     )
 
     # Register tools
@@ -270,7 +270,7 @@ async def chat(
         message_history=message_history,
     )
 
-    return result.data, result.all_messages()
+    return result.output, result.all_messages()
 
 
 async def chat_stream(

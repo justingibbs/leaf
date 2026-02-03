@@ -62,7 +62,7 @@ frontend/.vite/
 # Tauri / Rust
 # =============================================================================
 tauri/target/
-tauri/Cargo.lock
+tauri/gen/
 
 # Rust
 *.rs.bk

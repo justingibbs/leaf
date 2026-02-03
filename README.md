@@ -17,7 +17,8 @@ LEAF is a desktop application that enables event-driven automations through natu
 
 - Python 3.11+
 - [UV](https://docs.astral.sh/uv/) package manager
-- Node.js (for MCP servers, optional)
+- Node.js 18+ (for frontend)
+- [Rust](https://rustup.rs/) (for desktop app)
 
 ### Installation
 
@@ -45,17 +46,39 @@ LEAF_MODEL=google-gla:gemini-2.0-flash
 
 Get a free API key from [Pydantic AI Gateway](https://ai.pydantic.dev/).
 
-### Running LEAF
+### Running the Desktop App
 
+**Terminal 1** - Start the backend:
 ```bash
-# Start the server
+cd /path/to/leaf
 uv run python -m leaf.main
-
-# Or use the CLI entry point
-uv run leaf
 ```
 
-The API server starts at `http://127.0.0.1:8000`.
+**Terminal 2** - Start the Tauri desktop app:
+```bash
+cd /path/to/leaf/tauri
+cargo tauri dev
+```
+
+This opens the LEAF desktop window. The backend runs at `http://127.0.0.1:8000`.
+
+### Running Frontend Only (Browser)
+
+If you don't have Rust installed, you can run the frontend in a browser:
+
+**Terminal 1** - Start the backend:
+```bash
+uv run python -m leaf.main
+```
+
+**Terminal 2** - Start the frontend dev server:
+```bash
+cd frontend
+npm install  # first time only
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser.
 
 ## Usage Example
 
@@ -118,7 +141,7 @@ LEAF is event-driven. Events flow through the system:
 
 ```
 leaf/
-├── src/leaf/
+├── src/leaf/           # Python backend
 │   ├── agent/          # PydanticAI agent and tools
 │   ├── api/            # FastAPI routes
 │   ├── cards/          # Card management
@@ -128,6 +151,17 @@ leaf/
 │   ├── mcp/            # MCP client integration
 │   ├── projects/       # Project management
 │   └── watcher/        # File system watcher
+├── frontend/           # React + TypeScript frontend
+│   ├── src/
+│   │   ├── api/        # API client
+│   │   ├── components/ # UI components
+│   │   ├── hooks/      # React Query hooks
+│   │   ├── pages/      # Route pages
+│   │   └── stores/     # Zustand state
+│   └── package.json
+├── tauri/              # Tauri desktop shell
+│   ├── src/main.rs
+│   └── tauri.conf.json
 ├── tests/              # Test suite
 ├── docs/               # Documentation
 └── pyproject.toml
@@ -160,7 +194,10 @@ MIT
 
 ## Acknowledgments
 
-- Built with [FastAPI](https://fastapi.tiangolo.com/)
+- Backend built with [FastAPI](https://fastapi.tiangolo.com/)
 - AI powered by [PydanticAI](https://ai.pydantic.dev/)
 - Package management by [UV](https://docs.astral.sh/uv/)
 - Protocol support via [MCP](https://modelcontextprotocol.io/)
+- Desktop app built with [Tauri](https://tauri.app/)
+- Frontend built with [React](https://react.dev/) + [Vite](https://vite.dev/)
+- UI components from [shadcn/ui](https://ui.shadcn.com/)

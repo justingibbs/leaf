@@ -34,11 +34,11 @@ def get_ai_api_key() -> str | None:
     """Get the AI API key from environment or config.
 
     Checks in order:
-    1. PYDANTIC_AI_API_KEY environment variable
+    1. PYDANTIC_AI_GATEWAY_API_KEY environment variable
     2. App config file
     """
     # Check environment first
-    api_key = os.environ.get("PYDANTIC_AI_API_KEY")
+    api_key = os.environ.get("PYDANTIC_AI_GATEWAY_API_KEY")
     if api_key:
         return api_key
 
@@ -66,7 +66,7 @@ def get_default_model() -> str:
         config = get_app_config()
         return config.default_model
     except Exception:
-        return "google-gla:gemini-2.0-flash"
+        return "gateway/google-vertex:gemini-2.0-flash"
 
 
 class ApiKeys(BaseModel):
@@ -80,7 +80,7 @@ class AppConfig(BaseModel):
 
     version: str = "1.0"
     theme: Literal["light", "dark", "system"] = "system"
-    default_model: str = "google-gla:gemini-2.0-flash"
+    default_model: str = "gateway/google-vertex:gemini-2.0-flash"
     api_keys: ApiKeys = Field(default_factory=ApiKeys)
     telemetry: bool = False
 

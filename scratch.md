@@ -1,3 +1,9 @@
+
+Read CLAUDE.md and the docs/ folder to understand the project. Then implement Phase 7: the Tauri + React frontend for LEAF.
+Ask any clarifying questions before starting.
+
+---
+
 Phase 6 complete
 
 ---

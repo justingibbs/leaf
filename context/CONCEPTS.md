@@ -29,14 +29,17 @@ This document describes LEAF's architecture using the **Concepts & Synchronizati
 │  │ Project │────────▶│ Watcher │────────▶│  Event  │────────▶│  Queue  │   │
 │  └─────────┘  opens   └─────────┘ emits   └─────────┘ pushes  └─────────┘   │
 │       │                                        │                     │       │
-│       │                                        │ matches             │       │
+│       │ has many                               │ matches             │       │
 │       ▼                                        ▼                     ▼       │
 │  ┌─────────┐         ┌─────────┐         ┌─────────┐         ┌─────────┐   │
 │  │   MCP   │◀────────│  Agent  │◀────────│  Chat   │         │   UI    │   │
-│  └─────────┘  tools   └─────────┘ responds└─────────┘         └─────────┘   │
-│                            │                                                 │
-│                            │ generates                                       │
-│                            ▼                                                 │
+│  └─────────┘  tools   └─────────┘ responds│ Session │         └─────────┘   │
+│                            │               └─────────┘                       │
+│                            │                    │ has many                   │
+│                            │ generates          ▼                            │
+│                            │               ┌─────────┐                       │
+│                            │               │ Message │                       │
+│                            ▼               └─────────┘                       │
 │  ┌─────────┐         ┌─────────┐         ┌─────────┐                        │
 │  │ Program │◀────────│  Card   │◀────────│ Trigger │                        │
 │  └─────────┘  has     └─────────┘  has    └─────────┘                        │
@@ -46,6 +49,9 @@ This document describes LEAF's architecture using the **Concepts & Synchronizati
 │  ┌─────────┐         ┌─────────┐◀──────────────┘                            │
 │  │ Sandbox │◀────────│Execution│                                            │
 │  └─────────┘  uses    └─────────┘                                            │
+│                                                                              │
+│  Card.source_session_id ──────────────────────▶ ChatSession                 │
+│  (provenance: which conversation created this card)                         │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -133,13 +139,14 @@ This document describes LEAF's architecture using the **Concepts & Synchronizati
 | name | Human-readable name |
 | description | What it does |
 | user_prompt | Original user request |
+| source_session_id | ChatSession that created this card (provenance) |
 | enabled | Whether active |
 | program_path | Path to generated code |
 | run_count | How many times executed |
 
 | Action | Description |
 |--------|-------------|
-| create(spec) | Create new card |
+| create(spec, session_id) | Create new card linked to session |
 | update(changes) | Modify card |
 | enable() | Activate card |
 | disable() | Deactivate card |
@@ -233,25 +240,67 @@ This document describes LEAF's architecture using the **Concepts & Synchronizati
 
 ---
 
-### 9. Chat
+### 9. ChatSession
 
-**Purpose**: Conversation interface with the AI
+**Purpose**: A discrete conversation with the AI agent within a project
+
+A ChatSession represents a single conversation thread. Users can have multiple sessions per project, allowing them to work on different topics, review past conversations, and maintain clear provenance for cards created through chat.
 
 | State | Description |
 |-------|-------------|
-| project_id | Which project context |
-| messages | Conversation history |
-| pending | Whether awaiting response |
+| id | Unique identifier |
+| project_id | Which project this session belongs to |
+| title | Human-readable title (auto-generated or user-defined) |
+| messages | Ordered list of messages in this session |
+| status | active, archived |
+| created_at | When the session started |
+| updated_at | Last message timestamp |
 
 | Action | Description |
 |--------|-------------|
-| send(message) | User sends message |
+| create(project_id) | Start a new session |
+| send(message) | User sends a message |
 | receive(response) | Agent responds |
-| clear() | Reset conversation |
+| rename(title) | Update the session title |
+| archive() | Mark session as archived (hidden from main list) |
+| unarchive() | Restore an archived session |
+| delete() | Permanently remove session and messages |
+
+| Emits | Description |
+|-------|-------------|
+| session.created | New session started |
+| session.message | Message added to session |
+| session.archived | Session was archived |
+
+**Relationships:**
+- A Project has many ChatSessions
+- A ChatSession has many Messages
+- A Card references the ChatSession that created it (via `source_session_id`)
 
 ---
 
-### 10. Agent
+### 10. Message
+
+**Purpose**: A single message within a chat session
+
+| State | Description |
+|-------|-------------|
+| id | Unique identifier |
+| session_id | Which session this belongs to |
+| role | user, assistant, system, tool |
+| content | Message text content |
+| tool_calls | Tool invocations (if assistant message) |
+| tool_result | Tool response (if tool message) |
+| metadata | Additional data (card_id if card was created, etc.) |
+| created_at | When the message was sent |
+
+| Action | Description |
+|--------|-------------|
+| create(session_id, role, content) | Add message to session |
+
+---
+
+### 11. Agent
 
 **Purpose**: AI that understands requests and generates automations
 
@@ -260,18 +309,18 @@ This document describes LEAF's architecture using the **Concepts & Synchronizati
 | model | Which LLM to use |
 | system_prompt | Base instructions |
 | tools | Available MCP tools |
-| context | Current conversation + project state |
+| session | Current ChatSession context |
 
 | Action | Description |
 |--------|-------------|
-| respond(message) | Generate response |
+| respond(session, message) | Generate response within session context |
 | propose_card(spec) | Suggest a new card |
 | generate_code(card) | Write program for card |
 | refine(feedback) | Improve based on feedback |
 
 ---
 
-### 11. Queue
+### 12. Queue
 
 **Purpose**: Real-time stream of system activity (what the UI shows)
 
@@ -290,7 +339,7 @@ This document describes LEAF's architecture using the **Concepts & Synchronizati
 
 ---
 
-### 12. MCP
+### 13. MCP
 
 **Purpose**: External tool access via Model Context Protocol
 
@@ -418,30 +467,53 @@ Executions create sandboxed environments, run the program, and handle success/fa
 
 ---
 
-### Chat → Agent → Card Creation
+### ChatSession Lifecycle
 
 ```
-Chat.send(message)
-  -> Agent.respond(message, context={project, cards, recent_events})
+ChatSession.create(project_id)
+  -> Generate title from first message (or "New Chat")
+  -> Event.emit(type="session.created", payload={session_id})
+
+ChatSession.archive()
+  -> Event.emit(type="session.archived", payload={session_id})
+
+ChatSession.delete()
+  -> Message.delete_all(session_id)
+  -> Event.emit(type="session.deleted", payload={session_id})
+```
+
+Sessions are created when users start new conversations. Archiving hides sessions from the main list without deleting history.
+
+---
+
+### ChatSession → Agent → Card Creation
+
+```
+ChatSession.send(message)
+  -> Message.create(session_id, role="user", content=message)
+  -> Agent.respond(session, message, context={project, cards, recent_events})
 
 Agent.respond.text(response)
-  -> Chat.receive(response)
+  -> Message.create(session_id, role="assistant", content=response)
+  -> ChatSession.update(updated_at=now)
 
 Agent.propose_card(spec)
-  -> Chat.receive(card_preview)
+  -> Message.create(session_id, role="assistant", content=card_preview)
   -> await User.confirm or User.reject
 
 User.confirm(card_spec)
   -> Agent.generate_code(card_spec)
   -> Program.generate(code)
-  -> Card.create(card_with_program)
-  -> Event.emit(type="card.created", payload={card_id})
+  -> Card.create(card_with_program, source_session_id=session.id)
+  -> Message.create(session_id, role="assistant", metadata={card_id})
+  -> Event.emit(type="card.created", payload={card_id, session_id})
 
 User.reject(feedback)
+  -> Message.create(session_id, role="user", content=feedback)
   -> Agent.refine(feedback)
 ```
 
-The Chat/Agent flow is how users create Cards through natural language. The Agent proposes, the user confirms, and only then is code generated and the Card created.
+The ChatSession/Agent flow is how users create Cards through natural language. Messages are persisted to the session, creating a complete history. Cards link back to their originating session for provenance.
 
 ---
 
